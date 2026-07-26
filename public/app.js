@@ -16,7 +16,10 @@ async function api(path, options = {}) {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
   });
-  if (res.status === 401) {
+  // 401 aqui so significa "sessao invalida" - a rota de login (que roda sem
+  // sessao ainda) e outras checagens de senha usam 403 justamente pra nao
+  // colidir com esse tratamento.
+  if (res.status === 401 && path !== '/api/login') {
     showLogin();
     throw new Error('Sessão expirada');
   }

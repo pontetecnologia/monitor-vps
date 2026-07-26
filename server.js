@@ -114,7 +114,7 @@ app.post('/api/account/change-password', requireAuth, async (req, res, next) => 
     const { currentPassword, newPassword } = req.body || {};
     if (typeof currentPassword !== 'string') return res.status(400).json({ error: 'Senha atual obrigatoria' });
     const ok = await bcrypt.compare(currentPassword, account.passwordHash);
-    if (!ok) return res.status(401).json({ error: 'Senha atual incorreta' });
+    if (!ok) return res.status(403).json({ error: 'Senha atual incorreta' });
 
     const finalPassword = typeof newPassword === 'string' && newPassword.length >= 12
       ? newPassword
@@ -131,7 +131,7 @@ app.post('/api/vps/root-password', requireAuth, async (req, res, next) => {
     const { currentPassword, newPassword } = req.body || {};
     if (typeof currentPassword !== 'string') return res.status(400).json({ error: 'Confirme a senha do painel' });
     const ok = await bcrypt.compare(currentPassword, account.passwordHash);
-    if (!ok) return res.status(401).json({ error: 'Senha do painel incorreta' });
+    if (!ok) return res.status(403).json({ error: 'Senha do painel incorreta' });
 
     const finalPassword = typeof newPassword === 'string' && newPassword.length >= 12
       ? newPassword
