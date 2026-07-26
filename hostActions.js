@@ -45,7 +45,19 @@ async function rotatedLogsPreview(days) {
   return Number(stdout.trim());
 }
 
+async function ensureImage(image) {
+  try {
+    await docker.getImage(image).inspect();
+  } catch {
+    const stream = await docker.pull(image);
+    await new Promise((resolve, reject) => {
+      docker.modem.followProgress(stream, (err) => (err ? reject(err) : resolve()));
+    });
+  }
+}
+
 async function runHostContainer(cmd) {
+  await ensureImage('alpine:3');
   const [data] = await docker.run('alpine:3', cmd, process.stdout, {
     HostConfig: { Binds: ['/:/host:rw'], AutoRemove: true },
   });
