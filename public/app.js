@@ -227,6 +227,137 @@ async function refreshSummary() {
   renderTiles(await api('/api/summary'));
 }
 
+const HISTORY_SERIES = [
+  { key: 'cpu', label: 'CPU', color: 'var(--blue)' },
+  { key: 'ram', label: 'Memória', color: 'var(--series-green)' },
+  { key: 'disk', label: 'Disco', color: 'var(--series-magenta)' },
+];
+const CHART_W = 600;
+const CHART_H = 220;
+const CHART_MARGIN = { top: 10, right: 10, bottom: 20, left: 32 };
+
+let historyData = [];
+let historyRangeHours = 24;
+
+function fmtTime(t) {
+  const d = new Date(t);
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function chartScales(points) {
+  const minT = points[0].t;
+  const maxT = points[points.length - 1].t;
+  const x = (t) => {
+    if (maxT === minT) return CHART_MARGIN.left;
+    return CHART_MARGIN.left + ((t - minT) / (maxT - minT)) * (CHART_W - CHART_MARGIN.left - CHART_MARGIN.right);
+  };
+  const y = (v) => CHART_H - CHART_MARGIN.bottom - (v / 100) * (CHART_H - CHART_MARGIN.top - CHART_MARGIN.bottom);
+  return { x, y, minT, maxT };
+}
+
+function renderHistoryChart() {
+  const svg = document.getElementById('history-chart');
+  const cutoff = Date.now() - historyRangeHours * 3600 * 1000;
+  const points = historyData.filter((p) => p.t >= cutoff);
+  svg.innerHTML = '';
+  if (points.length < 2) {
+    svg.innerHTML = `<text x="${CHART_W / 2}" y="${CHART_H / 2}" text-anchor="middle" class="chart-axis-label">Ainda coletando histórico…</text>`;
+    document.getElementById('chart-legend').innerHTML = '';
+    return;
+  }
+
+  const { x, y, minT, maxT } = chartScales(points);
+  const ns = 'http://www.w3.org/2000/svg';
+  const frag = document.createDocumentFragment();
+
+  [0, 25, 50, 75, 100].forEach((v) => {
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', CHART_MARGIN.left); line.setAttribute('x2', CHART_W - CHART_MARGIN.right);
+    line.setAttribute('y1', y(v)); line.setAttribute('y2', y(v));
+    line.setAttribute('class', 'chart-gridline');
+    frag.appendChild(line);
+    const label = document.createElementNS(ns, 'text');
+    label.setAttribute('x', 2); label.setAttribute('y', y(v) + 3);
+    label.setAttribute('class', 'chart-axis-label');
+    label.textContent = `${v}%`;
+    frag.appendChild(label);
+  });
+
+  [minT, (minT + maxT) / 2, maxT].forEach((t, i) => {
+    const label = document.createElementNS(ns, 'text');
+    label.setAttribute('x', x(t));
+    label.setAttribute('y', CHART_H - 4);
+    label.setAttribute('text-anchor', i === 0 ? 'start' : i === 2 ? 'end' : 'middle');
+    label.setAttribute('class', 'chart-axis-label');
+    label.textContent = fmtTime(t);
+    frag.appendChild(label);
+  });
+
+  HISTORY_SERIES.forEach((series) => {
+    const poly = document.createElementNS(ns, 'polyline');
+    poly.setAttribute('points', points.map((p) => `${x(p.t)},${y(p[series.key])}`).join(' '));
+    poly.setAttribute('fill', 'none');
+    poly.setAttribute('stroke', series.color);
+    poly.setAttribute('stroke-width', '2');
+    poly.setAttribute('stroke-linejoin', 'round');
+    poly.setAttribute('stroke-linecap', 'round');
+    frag.appendChild(poly);
+  });
+
+  const crosshair = document.createElementNS(ns, 'line');
+  crosshair.setAttribute('class', 'chart-crosshair');
+  crosshair.setAttribute('y1', CHART_MARGIN.top);
+  crosshair.setAttribute('y2', CHART_H - CHART_MARGIN.bottom);
+  crosshair.setAttribute('visibility', 'hidden');
+  frag.appendChild(crosshair);
+
+  svg.appendChild(frag);
+
+  const tooltip = document.getElementById('chart-tooltip');
+  svg.onmousemove = (e) => {
+    const rect = svg.getBoundingClientRect();
+    const mx = ((e.clientX - rect.left) / rect.width) * CHART_W;
+    let nearest = points[0];
+    let best = Infinity;
+    points.forEach((p) => {
+      const d = Math.abs(x(p.t) - mx);
+      if (d < best) { best = d; nearest = p; }
+    });
+    crosshair.setAttribute('x1', x(nearest.t));
+    crosshair.setAttribute('x2', x(nearest.t));
+    crosshair.setAttribute('visibility', 'visible');
+    tooltip.hidden = false;
+    tooltip.style.left = `${Math.min((x(nearest.t) / CHART_W) * rect.width + 12, rect.width - 160)}px`;
+    tooltip.innerHTML = `
+      <div class="time">${fmtTime(nearest.t)}</div>
+      ${HISTORY_SERIES.map((s) => `<div class="row"><span class="swatch" style="background:${s.color}"></span>${s.label}: ${nearest[s.key]}%</div>`).join('')}
+    `;
+  };
+  svg.onmouseleave = () => {
+    crosshair.setAttribute('visibility', 'hidden');
+    tooltip.hidden = true;
+  };
+
+  const last = points[points.length - 1];
+  document.getElementById('chart-legend').innerHTML = HISTORY_SERIES.map((s) => (
+    `<span class="item"><span class="swatch" style="background:${s.color}"></span>${s.label} (${last[s.key]}%)</span>`
+  )).join('');
+}
+
+document.getElementById('range-picker').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-hours]');
+  if (!btn) return;
+  document.querySelectorAll('#range-picker button').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  historyRangeHours = Number(btn.dataset.hours);
+  renderHistoryChart();
+});
+
+async function refreshHistory() {
+  historyData = await api('/api/metrics/history');
+  renderHistoryChart();
+}
+
 function fmtGeo(geo) {
   if (!geo || (!geo.city && !geo.country)) return '-';
   return [geo.city, geo.country].filter(Boolean).join(', ');
@@ -308,8 +439,10 @@ function boot(wsToken) {
   refreshPostgres();
   refreshLogBreakdown();
   refreshSecurity();
+  refreshHistory();
   connectWs(wsToken);
   setInterval(refreshSummary, 15000);
+  setInterval(refreshHistory, 60000);
   setInterval(refreshPostgres, 30000);
   setInterval(refreshSecurity, 30000);
 }

@@ -10,6 +10,7 @@ const { WebSocketServer } = require('ws');
 const dockerApi = require('./docker');
 const hostActions = require('./hostActions');
 const { lookupGeoBatch } = require('./geo');
+const metrics = require('./metrics');
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_USER = process.env.ADMIN_USER;
@@ -146,6 +147,10 @@ app.get('/api/summary', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.get('/api/metrics/history', requireAuth, (req, res) => {
+  res.json(metrics.getHistory());
+});
+
 app.get('/api/containers', requireAuth, async (req, res, next) => {
   try {
     const containers = await dockerApi.listContainers();
@@ -273,6 +278,7 @@ app.use((err, req, res, next) => {
 });
 
 const server = app.listen(PORT, () => console.log(`vps-monitor ouvindo na porta ${PORT}`));
+metrics.start();
 
 const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {

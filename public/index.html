@@ -27,6 +27,23 @@
   <section class="tiles" id="tiles"></section>
 
   <section class="panel">
+    <div class="panel-header">
+      <h2>Histórico de uso</h2>
+      <div class="range-picker" id="range-picker">
+        <button data-hours="1">1h</button>
+        <button data-hours="6">6h</button>
+        <button data-hours="24" class="active">24h</button>
+        <button data-hours="48">48h</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <svg id="history-chart" viewBox="0 0 600 220" preserveAspectRatio="none"></svg>
+      <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+    </div>
+    <div class="chart-legend" id="chart-legend"></div>
+  </section>
+
+  <section class="panel">
     <h2>Containers</h2>
     <table id="containers-table">
       <thead><tr><th>Nome</th><th>Projeto</th><th>Status</th><th>CPU</th><th>Mem</th><th>Ações</th></tr></thead>
