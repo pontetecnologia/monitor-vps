@@ -345,6 +345,7 @@ document.querySelector('.cleanup-actions').addEventListener('click', async (e) =
       'rotated-logs': '/api/cleanup/rotated-logs',
       'prune-images': '/api/cleanup/prune-images',
       'prune-containers': '/api/cleanup/prune-containers',
+      'system-trash': '/api/cleanup/system-trash',
     }[action];
     const data = await api(endpoint, { method: 'POST', body: JSON.stringify({}) });
     result.textContent = 'Concluído.';
@@ -496,16 +497,24 @@ function fmtGeo(geo) {
   return [geo.city, geo.country].filter(Boolean).join(', ');
 }
 
-function renderFailedLogins(list) {
+function renderFailedLogins(list, blockedSet) {
   const tbody = document.querySelector('#failed-logins-table tbody');
-  tbody.innerHTML = list.map((entry) => (
-    `<tr>
+  tbody.innerHTML = list.map((entry) => {
+    const isBlocked = blockedSet.has(entry.ip);
+    const status = isBlocked
+      ? '<span class="status-dot critical"></span>Bloqueado'
+      : '<span class="status-dot good"></span>Liberado';
+    const action = isBlocked
+      ? `<button data-unblock="${entry.ip}">Liberar</button>`
+      : `<button data-block="${entry.ip}" class="danger">Bloquear</button>`;
+    return `<tr>
       <td>${entry.ip}</td>
       <td>${fmtGeo(entry.geo)}</td>
       <td class="num">${entry.count}</td>
-      <td><div class="row-actions"><button data-block="${entry.ip}" class="danger">Bloquear</button></div></td>
-    </tr>`
-  )).join('');
+      <td>${status}</td>
+      <td><div class="row-actions">${action}</div></td>
+    </tr>`;
+  }).join('');
 }
 
 function renderBlockedIps(list) {
@@ -522,19 +531,27 @@ async function refreshSecurity() {
     api('/api/security/failed-logins'),
     api('/api/security/blocked-ips'),
   ]);
-  renderFailedLogins(failedLogins);
+  renderFailedLogins(failedLogins, new Set(blockedIps));
   renderBlockedIps(blockedIps);
 }
 
 document.querySelector('#failed-logins-table tbody').addEventListener('click', async (e) => {
-  const btn = e.target.closest('button[data-block]');
+  const blockBtn = e.target.closest('button[data-block]');
+  const unblockBtn = e.target.closest('button[data-unblock]');
+  const btn = blockBtn || unblockBtn;
   if (!btn) return;
-  const ip = btn.dataset.block;
-  const ok = await modalConfirm(`Bloquear o IP <strong>${ip}</strong> na porta 22 (SSH)?`, { confirmLabel: 'Bloquear', danger: true });
-  if (!ok) return;
+
+  if (blockBtn) {
+    const ip = blockBtn.dataset.block;
+    const ok = await modalConfirm(`Bloquear o IP <strong>${ip}</strong> na porta 22 (SSH)?`, { confirmLabel: 'Bloquear', danger: true });
+    if (!ok) return;
+  }
+
+  const ip = blockBtn ? blockBtn.dataset.block : unblockBtn.dataset.unblock;
+  const endpoint = blockBtn ? `/api/security/block/${ip}` : `/api/security/unblock/${ip}`;
   btn.disabled = true;
   try {
-    await api(`/api/security/block/${ip}`, { method: 'POST' });
+    await api(endpoint, { method: 'POST' });
     await refreshSecurity();
   } catch (err) {
     await modalAlert(err.message, { error: true });

@@ -67,6 +67,7 @@
       <button data-action="rotated-logs">Limpar logs rotacionados (+7 dias)</button>
       <button data-action="prune-images">Remover imagens Docker não usadas</button>
       <button data-action="prune-containers">Remover containers parados</button>
+      <button data-action="system-trash">Limpar lixeira do sistema (apt + /tmp)</button>
     </div>
     <p id="cleanup-result" class="muted"></p>
   </section>
@@ -75,7 +76,7 @@
     <h2>Segurança — tentativas de conexão (SSH)</h2>
     <p class="muted">Bloqueios afetam só a porta 22 (SSH) — o acesso a este painel (via Cloudflare/Traefik, portas 80/443) nunca é afetado, então dá pra sempre voltar aqui e liberar de novo.</p>
     <table id="failed-logins-table">
-      <thead><tr><th>IP</th><th>Localização</th><th>Tentativas</th><th>Ações</th></tr></thead>
+      <thead><tr><th>IP</th><th>Localização</th><th>Tentativas</th><th>Status</th><th>Ações</th></tr></thead>
       <tbody></tbody>
     </table>
     <h3 class="subheading">IPs bloqueados atualmente</h3>

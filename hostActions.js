@@ -166,6 +166,14 @@ async function cleanupRotatedLogs(days) {
   return statusCode;
 }
 
+async function cleanupSystemTrash() {
+  const { statusCode, output } = await runHostContainer([
+    'chroot', '/host', 'sh', '-c',
+    'apt-get clean; apt-get -y autoremove --purge; find /tmp /var/tmp -mindepth 1 -mtime +2 -delete 2>/dev/null; true',
+  ]);
+  return { statusCode, output };
+}
+
 // Bloqueios ficam restritos a porta 22 (SSH). Isso e proposital: o painel chega
 // pelo Cloudflare/Traefik nas portas 80/443, entao nenhum bloqueio feito aqui
 // pode derrubar o acesso ao proprio painel.
@@ -232,6 +240,7 @@ module.exports = {
   rotatedLogsPreview,
   vacuumJournal,
   cleanupRotatedLogs,
+  cleanupSystemTrash,
   topFailedLoginIps,
   blockIp,
   unblockIp,

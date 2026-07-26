@@ -246,6 +246,13 @@ app.post('/api/cleanup/rotated-logs', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.post('/api/cleanup/system-trash', requireAuth, async (req, res, next) => {
+  try {
+    const { statusCode } = await hostActions.cleanupSystemTrash();
+    res.json({ ok: statusCode === 0 });
+  } catch (e) { next(e); }
+});
+
 app.post('/api/cleanup/prune-images', requireAuth, async (req, res, next) => {
   try { res.json(await dockerApi.pruneImages()); } catch (e) { next(e); }
 });
