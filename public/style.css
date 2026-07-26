@@ -54,7 +54,7 @@ body {
   color: var(--text-primary);
 }
 
-.screen[hidden] { display: none; }
+[hidden] { display: none !important; }
 
 #login-screen {
   min-height: 100vh;
