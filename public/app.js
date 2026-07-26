@@ -25,6 +25,59 @@ async function api(path, options = {}) {
   return data;
 }
 
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalTitleEl = document.getElementById('modal-title');
+const modalBodyEl = document.getElementById('modal-body');
+const modalFooterEl = document.getElementById('modal-footer');
+
+function openModal({ title, bodyHtml, actions }) {
+  return new Promise((resolve) => {
+    modalTitleEl.textContent = title;
+    modalBodyEl.innerHTML = bodyHtml;
+    modalFooterEl.innerHTML = '';
+
+    function close(value) {
+      modalBackdrop.hidden = true;
+      document.removeEventListener('keydown', onKey);
+      resolve(value);
+    }
+    function onKey(e) { if (e.key === 'Escape') close(undefined); }
+
+    actions.forEach((action) => {
+      const btn = document.createElement('button');
+      btn.textContent = action.label;
+      btn.className = action.variant || '';
+      btn.type = 'button';
+      btn.onclick = () => close(action.value);
+      modalFooterEl.appendChild(btn);
+    });
+
+    document.addEventListener('keydown', onKey);
+    modalBackdrop.onclick = (e) => { if (e.target === modalBackdrop) close(undefined); };
+    document.querySelector('.modal-close').onclick = () => close(undefined);
+    modalBackdrop.hidden = false;
+  });
+}
+
+function modalConfirm(message, opts = {}) {
+  return openModal({
+    title: opts.title || 'Confirmar ação',
+    bodyHtml: `<p>${message}</p>`,
+    actions: [
+      { label: 'Cancelar', value: false, variant: 'ghost' },
+      { label: opts.confirmLabel || 'Confirmar', value: true, variant: opts.danger ? 'danger' : '' },
+    ],
+  }).then((v) => v === true);
+}
+
+function modalAlert(message, opts = {}) {
+  return openModal({
+    title: opts.title || (opts.error ? 'Erro' : 'Aviso'),
+    bodyHtml: `<p>${message}</p>`,
+    actions: [{ label: 'OK', value: true }],
+  });
+}
+
 function showLogin() {
   loginScreen.hidden = false;
   appScreen.hidden = true;
@@ -79,7 +132,41 @@ document.getElementById('change-password-form').addEventListener('submit', async
     e.target.reset();
     newPasswordRow.hidden = true;
   } catch (err) {
-    alert(err.message);
+    await modalAlert(err.message, { error: true });
+  }
+});
+
+const rootNewPasswordRow = document.getElementById('root-new-password-row');
+document.querySelectorAll('input[name="root-pw-mode"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    const manual = document.querySelector('input[name="root-pw-mode"]:checked').value === 'manual';
+    rootNewPasswordRow.hidden = !manual;
+    document.getElementById('root-new-password').required = manual;
+  });
+});
+
+document.getElementById('change-root-password-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ok = await modalConfirm(
+    'Isso troca a senha real de <strong>root</strong> usada para acessar a VPS por SSH. Tem certeza que quer continuar?',
+    { title: 'Trocar senha do root', confirmLabel: 'Trocar senha do root', danger: true },
+  );
+  if (!ok) return;
+
+  const currentPassword = document.getElementById('root-current-password').value;
+  const manual = document.querySelector('input[name="root-pw-mode"]:checked').value === 'manual';
+  const newPassword = manual ? document.getElementById('root-new-password').value : undefined;
+  try {
+    const data = await api('/api/vps/root-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    document.getElementById('root-new-password-value').textContent = data.newPassword;
+    document.getElementById('root-password-result').hidden = false;
+    e.target.reset();
+    rootNewPasswordRow.hidden = true;
+  } catch (err) {
+    await modalAlert(err.message, { error: true });
   }
 });
 
@@ -137,7 +224,7 @@ document.querySelector('#containers-table tbody').addEventListener('click', asyn
     await api(`/api/containers/${btn.dataset.id}/${btn.dataset.action}`, { method: 'POST' });
     await refreshContainers();
   } catch (err) {
-    alert(err.message);
+    await modalAlert(err.message, { error: true });
   } finally {
     btn.disabled = false;
   }
@@ -177,7 +264,7 @@ document.querySelector('#postgres-table tbody').addEventListener('click', async 
     btn.textContent = data.ok ? 'OK' : 'Falhou';
   } catch (err) {
     btn.textContent = 'Erro';
-    alert(err.message);
+    await modalAlert(err.message, { error: true });
   } finally {
     setTimeout(() => { btn.disabled = false; btn.textContent = 'VACUUM'; }, 2000);
   }
@@ -202,7 +289,8 @@ document.querySelector('.cleanup-actions').addEventListener('click', async (e) =
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
   const action = btn.dataset.action;
-  if (!confirm(`Confirma a ação: ${btn.textContent}?`)) return;
+  const ok = await modalConfirm(`Confirma a ação: <strong>${btn.textContent}</strong>?`, { confirmLabel: 'Confirmar' });
+  if (!ok) return;
   btn.disabled = true;
   const result = document.getElementById('cleanup-result');
   result.textContent = 'Executando...';
@@ -397,13 +485,14 @@ document.querySelector('#failed-logins-table tbody').addEventListener('click', a
   const btn = e.target.closest('button[data-block]');
   if (!btn) return;
   const ip = btn.dataset.block;
-  if (!confirm(`Bloquear o IP ${ip} na porta 22 (SSH)?`)) return;
+  const ok = await modalConfirm(`Bloquear o IP <strong>${ip}</strong> na porta 22 (SSH)?`, { confirmLabel: 'Bloquear', danger: true });
+  if (!ok) return;
   btn.disabled = true;
   try {
     await api(`/api/security/block/${ip}`, { method: 'POST' });
     await refreshSecurity();
   } catch (err) {
-    alert(err.message);
+    await modalAlert(err.message, { error: true });
     btn.disabled = false;
   }
 });
@@ -417,7 +506,7 @@ document.querySelector('#blocked-ips-table tbody').addEventListener('click', asy
     await api(`/api/security/unblock/${ip}`, { method: 'POST' });
     await refreshSecurity();
   } catch (err) {
-    alert(err.message);
+    await modalAlert(err.message, { error: true });
     btn.disabled = false;
   }
 });

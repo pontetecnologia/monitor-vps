@@ -117,6 +117,42 @@ async function runHostContainer(cmd, extraHostConfig = {}) {
   return { statusCode: StatusCode, output: stdout.output + stderr.output };
 }
 
+// Igual ao runHostContainer, mas escreve dados no stdin do container em vez de
+// so ler a saida. Usado pra trocar a senha do root sem nunca colocar a senha em
+// texto puro num argumento de comando (isso ficaria visivel via `docker inspect`
+// enquanto o container efemero ainda existe) - vai só pelo stdin, que nao fica
+// registrado em lugar nenhum.
+async function runHostContainerWithStdin(cmd, stdinData, extraHostConfig = {}) {
+  await ensureImage('alpine:3');
+  const container = await docker.createContainer({
+    Image: 'alpine:3',
+    Cmd: cmd,
+    OpenStdin: true,
+    StdinOnce: true,
+    AttachStdin: true,
+    AttachStdout: true,
+    AttachStderr: true,
+    HostConfig: { Binds: ['/:/host:rw'], AutoRemove: true, ...extraHostConfig },
+  });
+  const stdout = collectorStream();
+  const stderr = collectorStream();
+  const stream = await container.attach({ stream: true, stdin: true, stdout: true, stderr: true });
+  container.modem.demuxStream(stream, stdout.stream, stderr.stream);
+  await container.start();
+  stream.write(stdinData);
+  stream.end();
+  const { StatusCode } = await container.wait();
+  return { statusCode: StatusCode, output: stdout.output + stderr.output };
+}
+
+async function changeRootPassword(newPassword) {
+  const { statusCode, output } = await runHostContainerWithStdin(
+    ['chroot', '/host', 'chpasswd'],
+    `root:${newPassword}\n`,
+  );
+  if (statusCode !== 0) throw new Error(`Falha ao trocar a senha do root: ${output.trim()}`);
+}
+
 async function vacuumJournal(days) {
   const { statusCode } = await runHostContainer(['chroot', '/host', 'journalctl', `--vacuum-time=${days}d`]);
   return statusCode;
@@ -201,4 +237,5 @@ module.exports = {
   unblockIp,
   listBlockedIps,
   isValidIpv4,
+  changeRootPassword,
 };

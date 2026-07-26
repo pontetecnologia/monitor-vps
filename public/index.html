@@ -87,20 +87,55 @@
 
   <section class="panel">
     <h2>Conta</h2>
-    <form id="change-password-form" class="account-form">
-      <label>Senha atual<input type="password" id="current-password" autocomplete="current-password" required></label>
-      <div class="radio-row">
-        <label><input type="radio" name="pw-mode" value="auto" checked> Gerar senha segura automaticamente</label>
-        <label><input type="radio" name="pw-mode" value="manual"> Definir senha personalizada</label>
+    <div class="account-grid">
+      <div class="account-card">
+        <h3>Senha do painel</h3>
+        <p class="muted">Senha usada para entrar neste painel.</p>
+        <form id="change-password-form" class="account-form">
+          <label>Senha atual<input type="password" id="current-password" autocomplete="current-password" required></label>
+          <div class="radio-row">
+            <label><input type="radio" name="pw-mode" value="auto" checked> Gerar senha segura automaticamente</label>
+            <label><input type="radio" name="pw-mode" value="manual"> Definir senha personalizada</label>
+          </div>
+          <label id="new-password-row" hidden>Nova senha (mín. 12 caracteres)<input type="password" id="new-password" autocomplete="new-password" minlength="12"></label>
+          <button type="submit">Trocar senha do painel</button>
+        </form>
+        <div id="password-result" class="password-result" hidden>
+          <p class="muted">Nova senha (só aparece uma vez — anote agora):</p>
+          <code id="new-password-value"></code>
+        </div>
       </div>
-      <label id="new-password-row" hidden>Nova senha (mín. 12 caracteres)<input type="password" id="new-password" autocomplete="new-password" minlength="12"></label>
-      <button type="submit">Trocar senha</button>
-    </form>
-    <div id="password-result" class="password-result" hidden>
-      <p class="muted">Nova senha (só aparece uma vez — anote agora):</p>
-      <code id="new-password-value"></code>
+
+      <div class="account-card danger-zone">
+        <h3>Senha root da VPS</h3>
+        <p class="muted">Troca a senha real de acesso SSH do servidor (usuário <code>root</code>). Ação sensível — confirme com a senha deste painel.</p>
+        <form id="change-root-password-form" class="account-form">
+          <label>Senha do painel (confirmação)<input type="password" id="root-current-password" autocomplete="current-password" required></label>
+          <div class="radio-row">
+            <label><input type="radio" name="root-pw-mode" value="auto" checked> Gerar senha segura automaticamente</label>
+            <label><input type="radio" name="root-pw-mode" value="manual"> Definir senha personalizada</label>
+          </div>
+          <label id="root-new-password-row" hidden>Nova senha root (mín. 12 caracteres)<input type="password" id="root-new-password" autocomplete="new-password" minlength="12"></label>
+          <button type="submit" class="danger">Trocar senha do root</button>
+        </form>
+        <div id="root-password-result" class="password-result" hidden>
+          <p class="muted">Nova senha do root (só aparece uma vez — anote/salve num gerenciador de senhas agora):</p>
+          <code id="root-new-password-value"></code>
+        </div>
+      </div>
     </div>
   </section>
+</div>
+
+<div id="modal-backdrop" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <h3 id="modal-title"></h3>
+      <button type="button" class="modal-close" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
 </div>
 
 <script src="app.js"></script>
