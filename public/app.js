@@ -108,20 +108,77 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   showLogin();
 });
 
-const newPasswordRow = document.getElementById('new-password-row');
-document.querySelectorAll('input[name="pw-mode"]').forEach((radio) => {
-  radio.addEventListener('change', () => {
-    const manual = document.querySelector('input[name="pw-mode"]:checked').value === 'manual';
-    newPasswordRow.hidden = !manual;
-    document.getElementById('new-password').required = manual;
+function randomIndex(max) {
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return bytes[0] % max;
+}
+
+function generatePassword({ length, specialCount, upper, lower, digits }) {
+  const SPECIAL = '!@#$%^&*()-_=+[]{}';
+  const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const LOWER = 'abcdefghijkmnopqrstuvwxyz';
+  const DIGITS = '23456789';
+
+  const pools = [];
+  if (upper) pools.push(UPPER);
+  if (lower) pools.push(LOWER);
+  if (digits) pools.push(DIGITS);
+  if (pools.length === 0) pools.push(LOWER);
+
+  const special = Math.max(0, Math.min(specialCount, length));
+  const chars = [];
+  for (let i = 0; i < special; i += 1) chars.push(SPECIAL[randomIndex(SPECIAL.length)]);
+  for (let i = chars.length; i < length; i += 1) {
+    const pool = pools[i % pools.length];
+    chars.push(pool[randomIndex(pool.length)]);
+  }
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = randomIndex(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+function setupPasswordGenerator(prefix) {
+  const lengthInput = document.getElementById(`${prefix}-length`);
+  const specialInput = document.getElementById(`${prefix}-special`);
+  const upperInput = document.getElementById(`${prefix}-upper`);
+  const lowerInput = document.getElementById(`${prefix}-lower`);
+  const digitsInput = document.getElementById(`${prefix}-digits`);
+  const previewInput = document.getElementById(`${prefix}-preview`);
+  const regenerateBtn = document.getElementById(`${prefix}-regenerate`);
+
+  function regenerate() {
+    const length = Math.max(12, Math.min(64, Number(lengthInput.value) || 20));
+    const specialCount = Math.max(0, Math.min(length, Number(specialInput.value) || 0));
+    lengthInput.value = length;
+    specialInput.value = specialCount;
+    previewInput.value = generatePassword({
+      length,
+      specialCount,
+      upper: upperInput.checked,
+      lower: lowerInput.checked,
+      digits: digitsInput.checked,
+    });
+  }
+
+  [lengthInput, specialInput, upperInput, lowerInput, digitsInput].forEach((el) => {
+    el.addEventListener('change', regenerate);
   });
-});
+  regenerateBtn.addEventListener('click', regenerate);
+  regenerate();
+
+  return () => previewInput.value;
+}
+
+const getPanelPassword = setupPasswordGenerator('pw');
+const getRootPassword = setupPasswordGenerator('root-pw');
 
 document.getElementById('change-password-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const currentPassword = document.getElementById('current-password').value;
-  const manual = document.querySelector('input[name="pw-mode"]:checked').value === 'manual';
-  const newPassword = manual ? document.getElementById('new-password').value : undefined;
+  const newPassword = getPanelPassword();
   try {
     const data = await api('/api/account/change-password', {
       method: 'POST',
@@ -129,20 +186,10 @@ document.getElementById('change-password-form').addEventListener('submit', async
     });
     document.getElementById('new-password-value').textContent = data.newPassword;
     document.getElementById('password-result').hidden = false;
-    e.target.reset();
-    newPasswordRow.hidden = true;
+    document.getElementById('current-password').value = '';
   } catch (err) {
     await modalAlert(err.message, { error: true });
   }
-});
-
-const rootNewPasswordRow = document.getElementById('root-new-password-row');
-document.querySelectorAll('input[name="root-pw-mode"]').forEach((radio) => {
-  radio.addEventListener('change', () => {
-    const manual = document.querySelector('input[name="root-pw-mode"]:checked').value === 'manual';
-    rootNewPasswordRow.hidden = !manual;
-    document.getElementById('root-new-password').required = manual;
-  });
 });
 
 document.getElementById('change-root-password-form').addEventListener('submit', async (e) => {
@@ -154,8 +201,7 @@ document.getElementById('change-root-password-form').addEventListener('submit', 
   if (!ok) return;
 
   const currentPassword = document.getElementById('root-current-password').value;
-  const manual = document.querySelector('input[name="root-pw-mode"]:checked').value === 'manual';
-  const newPassword = manual ? document.getElementById('root-new-password').value : undefined;
+  const newPassword = getRootPassword();
   try {
     const data = await api('/api/vps/root-password', {
       method: 'POST',
@@ -163,8 +209,7 @@ document.getElementById('change-root-password-form').addEventListener('submit', 
     });
     document.getElementById('root-new-password-value').textContent = data.newPassword;
     document.getElementById('root-password-result').hidden = false;
-    e.target.reset();
-    rootNewPasswordRow.hidden = true;
+    document.getElementById('root-current-password').value = '';
   } catch (err) {
     await modalAlert(err.message, { error: true });
   }

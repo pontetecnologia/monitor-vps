@@ -93,11 +93,23 @@
         <p class="muted">Senha usada para entrar neste painel.</p>
         <form id="change-password-form" class="account-form">
           <label>Senha atual<input type="password" id="current-password" autocomplete="current-password" required></label>
-          <div class="radio-row">
-            <label><input type="radio" name="pw-mode" value="auto" checked> Gerar senha segura automaticamente</label>
-            <label><input type="radio" name="pw-mode" value="manual"> Definir senha personalizada</label>
+
+          <div class="pw-generator">
+            <div class="pw-generator-row">
+              <label>Comprimento<input type="number" id="pw-length" min="12" max="64" value="20"></label>
+              <label>Caracteres especiais<input type="number" id="pw-special" min="0" max="16" value="2"></label>
+            </div>
+            <div class="pw-generator-checks">
+              <label><input type="checkbox" id="pw-upper" checked> Maiúsculas</label>
+              <label><input type="checkbox" id="pw-lower" checked> Minúsculas</label>
+              <label><input type="checkbox" id="pw-digits" checked> Números</label>
+            </div>
+            <div class="pw-preview-row">
+              <input type="text" id="pw-preview" class="pw-preview" autocomplete="off" spellcheck="false">
+              <button type="button" id="pw-regenerate" class="ghost">Gerar novamente</button>
+            </div>
           </div>
-          <label id="new-password-row" hidden>Nova senha (mín. 12 caracteres)<input type="password" id="new-password" autocomplete="new-password" minlength="12"></label>
+
           <button type="submit">Trocar senha do painel</button>
         </form>
         <div id="password-result" class="password-result" hidden>
@@ -111,11 +123,23 @@
         <p class="muted">Troca a senha real de acesso SSH do servidor (usuário <code>root</code>). Ação sensível — confirme com a senha deste painel.</p>
         <form id="change-root-password-form" class="account-form">
           <label>Senha do painel (confirmação)<input type="password" id="root-current-password" autocomplete="current-password" required></label>
-          <div class="radio-row">
-            <label><input type="radio" name="root-pw-mode" value="auto" checked> Gerar senha segura automaticamente</label>
-            <label><input type="radio" name="root-pw-mode" value="manual"> Definir senha personalizada</label>
+
+          <div class="pw-generator">
+            <div class="pw-generator-row">
+              <label>Comprimento<input type="number" id="root-pw-length" min="12" max="64" value="20"></label>
+              <label>Caracteres especiais<input type="number" id="root-pw-special" min="0" max="16" value="2"></label>
+            </div>
+            <div class="pw-generator-checks">
+              <label><input type="checkbox" id="root-pw-upper" checked> Maiúsculas</label>
+              <label><input type="checkbox" id="root-pw-lower" checked> Minúsculas</label>
+              <label><input type="checkbox" id="root-pw-digits" checked> Números</label>
+            </div>
+            <div class="pw-preview-row">
+              <input type="text" id="root-pw-preview" class="pw-preview" autocomplete="off" spellcheck="false">
+              <button type="button" id="root-pw-regenerate" class="ghost">Gerar novamente</button>
+            </div>
           </div>
-          <label id="root-new-password-row" hidden>Nova senha root (mín. 12 caracteres)<input type="password" id="root-new-password" autocomplete="new-password" minlength="12"></label>
+
           <button type="submit" class="danger">Trocar senha do root</button>
         </form>
         <div id="root-password-result" class="password-result" hidden>

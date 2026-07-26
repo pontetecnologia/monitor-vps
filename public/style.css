@@ -176,7 +176,9 @@ td.num { font-variant-numeric: tabular-nums; }
 
 .account-form { display: flex; flex-direction: column; gap: 14px; max-width: 420px; }
 .account-form label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); }
-.account-form input[type="password"] {
+.account-form input[type="password"],
+.account-form input[type="text"],
+.account-form input[type="number"] {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -184,9 +186,30 @@ td.num { font-variant-numeric: tabular-nums; }
   color: var(--text-primary);
   font-size: 1rem;
 }
-.account-form .radio-row { display: flex; flex-direction: column; gap: 8px; font-size: 0.88rem; color: var(--text-primary); }
-.account-form .radio-row label { flex-direction: row; align-items: center; gap: 8px; color: var(--text-primary); }
 .account-form button { align-self: flex-start; }
+
+.pw-generator {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--page);
+}
+.pw-generator-row { display: flex; gap: 12px; }
+.pw-generator-row label { flex: 1; }
+.pw-generator-row input[type="number"] { width: 100%; }
+.pw-generator-checks { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-primary); }
+.pw-generator-checks label { flex-direction: row; align-items: center; gap: 6px; color: var(--text-primary); }
+.pw-preview-row { display: flex; gap: 8px; }
+.pw-preview {
+  flex: 1;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+.pw-preview-row button { align-self: stretch; white-space: nowrap; }
 .password-result {
   margin-top: 14px;
   padding: 12px 14px;
