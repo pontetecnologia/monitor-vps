@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VPS Monitor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="login-screen" class="screen">
+  <form id="login-form" class="login-card">
+    <h1>VPS Monitor</h1>
+    <label>Usuário<input type="text" id="login-user" autocomplete="username" required></label>
+    <label>Senha<input type="password" id="login-pass" autocomplete="current-password" required></label>
+    <button type="submit">Entrar</button>
+    <p id="login-error" class="error" hidden></p>
+  </form>
+</div>
+
+<div id="app-screen" class="screen" hidden>
+  <header>
+    <h1>VPS Monitor</h1>
+    <button id="logout-btn" class="ghost">Sair</button>
+  </header>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="panel">
+    <h2>Containers</h2>
+    <table id="containers-table">
+      <thead><tr><th>Nome</th><th>Projeto</th><th>Status</th><th>CPU</th><th>Mem</th><th>Ações</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Bancos Postgres</h2>
+    <table id="postgres-table">
+      <thead><tr><th>Container</th><th>Banco</th><th>Tamanho</th><th>Ações</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Limpeza de espaço</h2>
+    <div id="log-breakdown" class="log-breakdown"></div>
+    <div class="cleanup-actions">
+      <button data-action="journal">Vacuum do journal (manter 3 dias)</button>
+      <button data-action="rotated-logs">Limpar logs rotacionados (+7 dias)</button>
+      <button data-action="prune-images">Remover imagens Docker não usadas</button>
+      <button data-action="prune-containers">Remover containers parados</button>
+    </div>
+    <p id="cleanup-result" class="muted"></p>
+  </section>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

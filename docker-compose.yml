@@ -1,0 +1,12 @@
+services:
+  vps-monitor:
+    image: vps-monitor:latest
+    environment:
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT: 3000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /:/hostfs:ro
+    restart: unless-stopped
