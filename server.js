@@ -141,6 +141,20 @@ app.post('/api/vps/root-password', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+app.post('/api/vps/reboot', requireAuth, async (req, res, next) => {
+  try {
+    const { currentPassword } = req.body || {};
+    if (typeof currentPassword !== 'string') return res.status(400).json({ error: 'Confirme a senha do painel' });
+    const ok = await bcrypt.compare(currentPassword, account.passwordHash);
+    if (!ok) return res.status(403).json({ error: 'Senha do painel incorreta' });
+
+    // responde antes de disparar o reboot: o proprio host (e este container)
+    // vai cair em seguida, entao a resposta pode nao chegar se disparada depois
+    res.json({ ok: true });
+    hostActions.rebootVps().catch((e) => console.error('Falha ao reiniciar a VPS:', e.message));
+  } catch (e) { next(e); }
+});
+
 app.get('/api/summary', requireAuth, async (req, res, next) => {
   try {
     const [disk, mem, cpu, df, info] = await Promise.all([

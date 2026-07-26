@@ -218,6 +218,25 @@ document.getElementById('change-root-password-form').addEventListener('submit', 
   }
 });
 
+document.getElementById('reboot-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const ok = await modalConfirm(
+    'Isso vai <strong>reiniciar o servidor inteiro agora</strong>. Todos os sites, bancos e este painel ficam fora do ar por 1-2 minutos. Tem certeza?',
+    { title: 'Reiniciar VPS', confirmLabel: 'Reiniciar agora', danger: true },
+  );
+  if (!ok) return;
+
+  const currentPassword = document.getElementById('reboot-current-password').value;
+  const result = document.getElementById('reboot-result');
+  try {
+    await api('/api/vps/reboot', { method: 'POST', body: JSON.stringify({ currentPassword }) });
+    document.getElementById('reboot-current-password').value = '';
+    result.textContent = 'Comando enviado. O servidor deve voltar em 1-2 minutos.';
+  } catch (err) {
+    await modalAlert(err.message, { error: true });
+  }
+});
+
 function severity(pct) {
   return pct > 90 ? 'critical' : pct > 75 ? 'warning' : 'good';
 }

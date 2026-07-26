@@ -148,6 +148,16 @@
           <code id="root-new-password-value"></code>
         </div>
       </div>
+
+      <div class="account-card danger-zone">
+        <h3>Reiniciar VPS</h3>
+        <p class="muted">Reinicia o servidor inteiro agora. Todos os sites, bancos e este próprio painel ficam fora do ar por cerca de 1-2 minutos durante o boot.</p>
+        <form id="reboot-form" class="account-form">
+          <label>Sua senha <strong>deste painel</strong> (confirmação)<input type="password" id="reboot-current-password" autocomplete="current-password" placeholder="Senha de login do painel" required></label>
+          <button type="submit" class="danger">Reiniciar VPS agora</button>
+        </form>
+        <p id="reboot-result" class="muted"></p>
+      </div>
     </div>
   </section>
 </div>

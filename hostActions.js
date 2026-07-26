@@ -153,6 +153,18 @@ async function changeRootPassword(newPassword) {
   if (statusCode !== 0) throw new Error(`Falha ao trocar a senha do root: ${output.trim()}`);
 }
 
+async function rebootVps() {
+  // nao espera o container terminar: um reboot de verdade derruba o host (e este
+  // proprio container junto) antes do `wait()` conseguir retornar
+  await ensureImage('alpine:3');
+  const container = await docker.createContainer({
+    Image: 'alpine:3',
+    Cmd: ['chroot', '/host', 'reboot'],
+    HostConfig: { Binds: ['/:/host:rw'], AutoRemove: true },
+  });
+  await container.start();
+}
+
 async function vacuumJournal(days) {
   const { statusCode } = await runHostContainer(['chroot', '/host', 'journalctl', `--vacuum-time=${days}d`]);
   return statusCode;
@@ -247,4 +259,5 @@ module.exports = {
   listBlockedIps,
   isValidIpv4,
   changeRootPassword,
+  rebootVps,
 };
