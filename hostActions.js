@@ -91,7 +91,7 @@ async function ensureImage(image) {
   }
 }
 
-function captureStream() {
+function collectorStream() {
   const chunks = [];
   const stream = new Writable({
     write(chunk, enc, cb) { chunks.push(chunk); cb(); },
@@ -101,11 +101,20 @@ function captureStream() {
 
 async function runHostContainer(cmd, extraHostConfig = {}) {
   await ensureImage('alpine:3');
-  const capture = captureStream();
-  const [data] = await docker.run('alpine:3', cmd, capture.stream, {
+  const container = await docker.createContainer({
+    Image: 'alpine:3',
+    Cmd: cmd,
+    AttachStdout: true,
+    AttachStderr: true,
     HostConfig: { Binds: ['/:/host:rw'], AutoRemove: true, ...extraHostConfig },
   });
-  return { statusCode: data.StatusCode, output: capture.output };
+  const stdout = collectorStream();
+  const stderr = collectorStream();
+  const stream = await container.attach({ stream: true, stdout: true, stderr: true });
+  container.modem.demuxStream(stream, stdout.stream, stderr.stream);
+  await container.start();
+  const { StatusCode } = await container.wait();
+  return { statusCode: StatusCode, output: stdout.output + stderr.output };
 }
 
 async function vacuumJournal(days) {

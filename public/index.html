@@ -58,7 +58,7 @@
     <h2>Segurança — tentativas de conexão (SSH)</h2>
     <p class="muted">Bloqueios afetam só a porta 22 (SSH) — o acesso a este painel (via Cloudflare/Traefik, portas 80/443) nunca é afetado, então dá pra sempre voltar aqui e liberar de novo.</p>
     <table id="failed-logins-table">
-      <thead><tr><th>IP</th><th>Tentativas</th><th>Ações</th></tr></thead>
+      <thead><tr><th>IP</th><th>Localização</th><th>Tentativas</th><th>Ações</th></tr></thead>
       <tbody></tbody>
     </table>
     <h3 class="subheading">IPs bloqueados atualmente</h3>
@@ -66,6 +66,23 @@
       <thead><tr><th>IP</th><th>Ações</th></tr></thead>
       <tbody></tbody>
     </table>
+  </section>
+
+  <section class="panel">
+    <h2>Conta</h2>
+    <form id="change-password-form" class="account-form">
+      <label>Senha atual<input type="password" id="current-password" autocomplete="current-password" required></label>
+      <div class="radio-row">
+        <label><input type="radio" name="pw-mode" value="auto" checked> Gerar senha segura automaticamente</label>
+        <label><input type="radio" name="pw-mode" value="manual"> Definir senha personalizada</label>
+      </div>
+      <label id="new-password-row" hidden>Nova senha (mín. 12 caracteres)<input type="password" id="new-password" autocomplete="new-password" minlength="12"></label>
+      <button type="submit">Trocar senha</button>
+    </form>
+    <div id="password-result" class="password-result" hidden>
+      <p class="muted">Nova senha (só aparece uma vez — anote agora):</p>
+      <code id="new-password-value"></code>
+    </div>
   </section>
 </div>
 

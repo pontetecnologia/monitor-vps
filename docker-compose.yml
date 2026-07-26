@@ -9,4 +9,5 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /:/hostfs:ro
+      - /etc/vps-monitor-data:/data
     restart: unless-stopped

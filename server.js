@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
@@ -8,6 +9,7 @@ const { WebSocketServer } = require('ws');
 
 const dockerApi = require('./docker');
 const hostActions = require('./hostActions');
+const { lookupGeoBatch } = require('./geo');
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_USER = process.env.ADMIN_USER;
@@ -17,6 +19,34 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
 if (!ADMIN_USER || !ADMIN_PASSWORD_HASH || !SESSION_SECRET) {
   console.error('ADMIN_USER, ADMIN_PASSWORD_HASH e SESSION_SECRET sao obrigatorios (veja .env.example)');
   process.exit(1);
+}
+
+// A senha pode ser trocada em tempo de execucao pelo painel. Como o container e
+// efemero (redeploys recriam do zero), a troca precisa sobreviver num mount
+// persistente (/data) em vez de so na memoria - senao qualquer redeploy volta
+// pra senha antiga do env var. O env var so serve de valor inicial (1o boot).
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const ACCOUNT_FILE = path.join(DATA_DIR, 'admin.json');
+
+function loadAccount() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf8'));
+    if (saved.username && saved.passwordHash) return saved;
+  } catch { /* arquivo ainda nao existe: usa o env var */ }
+  return { username: ADMIN_USER, passwordHash: ADMIN_PASSWORD_HASH };
+}
+
+function saveAccount(next) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(ACCOUNT_FILE, JSON.stringify(next), { mode: 0o600 });
+}
+
+let account = loadAccount();
+
+function generateStrongPassword(length = 20) {
+  // sem caracteres ambiguos (0/O, 1/l/I) pra facilitar digitar/ler se precisar
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  return Array.from(crypto.randomBytes(length), (b) => alphabet[b % alphabet.length]).join('');
 }
 
 const app = express();
@@ -64,9 +94,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Dados invalidos' });
   }
   const userOk = crypto.timingSafeEqual(
-    Buffer.from(username.padEnd(64)), Buffer.from(ADMIN_USER.padEnd(64)),
+    Buffer.from(username.padEnd(64)), Buffer.from(account.username.padEnd(64)),
   );
-  const passOk = userOk && await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+  const passOk = userOk && await bcrypt.compare(password, account.passwordHash);
   if (!userOk || !passOk) {
     return res.status(401).json({ error: 'Usuario ou senha invalidos' });
   }
@@ -76,6 +106,23 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
 app.post('/api/logout', requireAuth, (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
+});
+
+app.post('/api/account/change-password', requireAuth, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (typeof currentPassword !== 'string') return res.status(400).json({ error: 'Senha atual obrigatoria' });
+    const ok = await bcrypt.compare(currentPassword, account.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Senha atual incorreta' });
+
+    const finalPassword = typeof newPassword === 'string' && newPassword.length >= 12
+      ? newPassword
+      : generateStrongPassword();
+    const passwordHash = await bcrypt.hash(finalPassword, 12);
+    account = { username: account.username, passwordHash };
+    saveAccount(account);
+    res.json({ ok: true, newPassword: finalPassword });
+  } catch (e) { next(e); }
 });
 
 app.get('/api/summary', requireAuth, async (req, res, next) => {
@@ -188,7 +235,11 @@ app.post('/api/cleanup/prune-containers', requireAuth, async (req, res, next) =>
 });
 
 app.get('/api/security/failed-logins', requireAuth, async (req, res, next) => {
-  try { res.json(await hostActions.topFailedLoginIps(20)); } catch (e) { next(e); }
+  try {
+    const list = await hostActions.topFailedLoginIps(20);
+    const geoMap = await lookupGeoBatch(list.map((entry) => entry.ip));
+    res.json(list.map((entry) => ({ ...entry, geo: geoMap[entry.ip] })));
+  } catch (e) { next(e); }
 });
 
 app.get('/api/security/blocked-ips', requireAuth, async (req, res, next) => {

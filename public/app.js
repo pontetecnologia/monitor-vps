@@ -55,6 +55,34 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   showLogin();
 });
 
+const newPasswordRow = document.getElementById('new-password-row');
+document.querySelectorAll('input[name="pw-mode"]').forEach((radio) => {
+  radio.addEventListener('change', () => {
+    const manual = document.querySelector('input[name="pw-mode"]:checked').value === 'manual';
+    newPasswordRow.hidden = !manual;
+    document.getElementById('new-password').required = manual;
+  });
+});
+
+document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const currentPassword = document.getElementById('current-password').value;
+  const manual = document.querySelector('input[name="pw-mode"]:checked').value === 'manual';
+  const newPassword = manual ? document.getElementById('new-password').value : undefined;
+  try {
+    const data = await api('/api/account/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    document.getElementById('new-password-value').textContent = data.newPassword;
+    document.getElementById('password-result').hidden = false;
+    e.target.reset();
+    newPasswordRow.hidden = true;
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 function severity(pct) {
   return pct > 90 ? 'critical' : pct > 75 ? 'warning' : 'good';
 }
@@ -199,11 +227,17 @@ async function refreshSummary() {
   renderTiles(await api('/api/summary'));
 }
 
+function fmtGeo(geo) {
+  if (!geo || (!geo.city && !geo.country)) return '-';
+  return [geo.city, geo.country].filter(Boolean).join(', ');
+}
+
 function renderFailedLogins(list) {
   const tbody = document.querySelector('#failed-logins-table tbody');
   tbody.innerHTML = list.map((entry) => (
     `<tr>
       <td>${entry.ip}</td>
+      <td>${fmtGeo(entry.geo)}</td>
       <td class="num">${entry.count}</td>
       <td><div class="row-actions"><button data-block="${entry.ip}" class="danger">Bloquear</button></div></td>
     </tr>`
