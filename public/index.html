@@ -53,6 +53,20 @@
     </div>
     <p id="cleanup-result" class="muted"></p>
   </section>
+
+  <section class="panel">
+    <h2>Segurança — tentativas de conexão (SSH)</h2>
+    <p class="muted">Bloqueios afetam só a porta 22 (SSH) — o acesso a este painel (via Cloudflare/Traefik, portas 80/443) nunca é afetado, então dá pra sempre voltar aqui e liberar de novo.</p>
+    <table id="failed-logins-table">
+      <thead><tr><th>IP</th><th>Tentativas</th><th>Ações</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <h3 class="subheading">IPs bloqueados atualmente</h3>
+    <table id="blocked-ips-table">
+      <thead><tr><th>IP</th><th>Ações</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
 </div>
 
 <script src="app.js"></script>

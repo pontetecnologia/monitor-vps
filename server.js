@@ -80,14 +80,17 @@ app.post('/api/logout', requireAuth, (req, res) => {
 
 app.get('/api/summary', requireAuth, async (req, res, next) => {
   try {
-    const [disk, df, info] = await Promise.all([
+    const [disk, mem, cpu, df, info] = await Promise.all([
       hostActions.diskSummary(),
+      hostActions.memSummary(),
+      hostActions.cpuSummary(),
       dockerApi.systemDf(),
       dockerApi.docker.info(),
     ]);
     res.json({
       disk,
-      ram: { totalBytes: info.MemTotal, cpuCount: info.NCPU },
+      ram: { ...mem, cpuCount: info.NCPU },
+      cpu,
       docker: {
         images: { count: df.Images.length, sizeBytes: df.Images.reduce((s, i) => s + i.Size, 0), reclaimableBytes: df.Images.filter((i) => i.Containers === 0).reduce((s, i) => s + i.Size, 0) },
         containers: { count: df.Containers.length, sizeBytes: df.Containers.reduce((s, c) => s + (c.SizeRw || 0), 0) },
@@ -182,6 +185,33 @@ app.post('/api/cleanup/prune-images', requireAuth, async (req, res, next) => {
 
 app.post('/api/cleanup/prune-containers', requireAuth, async (req, res, next) => {
   try { res.json(await dockerApi.pruneContainers()); } catch (e) { next(e); }
+});
+
+app.get('/api/security/failed-logins', requireAuth, async (req, res, next) => {
+  try { res.json(await hostActions.topFailedLoginIps(20)); } catch (e) { next(e); }
+});
+
+app.get('/api/security/blocked-ips', requireAuth, async (req, res, next) => {
+  try { res.json(await hostActions.listBlockedIps()); } catch (e) { next(e); }
+});
+
+app.post('/api/security/block/:ip', requireAuth, async (req, res, next) => {
+  try {
+    const { ip } = req.params;
+    if (!hostActions.isValidIpv4(ip)) return res.status(400).json({ error: 'IP invalido' });
+    // trust proxy:2 ja resolve req.ip para o IP real do visitante atras de Cloudflare+Traefik
+    if (ip === req.ip) return res.status(400).json({ error: 'Nao e possivel bloquear o seu proprio IP' });
+    await hostActions.blockIp(ip);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+app.post('/api/security/unblock/:ip', requireAuth, async (req, res, next) => {
+  try {
+    if (!hostActions.isValidIpv4(req.params.ip)) return res.status(400).json({ error: 'IP invalido' });
+    await hostActions.unblockIp(req.params.ip);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));

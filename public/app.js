@@ -55,16 +55,29 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
   showLogin();
 });
 
-function renderTiles({ disk, ram, docker }) {
+function severity(pct) {
+  return pct > 90 ? 'critical' : pct > 75 ? 'warning' : 'good';
+}
+
+function meterTile(label, pct, sub) {
+  const color = `var(--${severity(pct)})`;
+  return `
+    <div class="meter-tile" style="--meter-color: ${color}">
+      <div class="meter-header"><span class="label">${label}</span><span class="value">${pct}%</span></div>
+      <div class="meter-track"><div class="meter-fill" style="width: ${Math.min(pct, 100)}%"></div></div>
+      <div class="sub">${sub}</div>
+    </div>`;
+}
+
+function renderTiles({ disk, ram, cpu, docker }) {
   const tiles = document.getElementById('tiles');
-  const diskStatus = disk.usedPercent > 90 ? 'critical' : disk.usedPercent > 75 ? 'warning' : 'good';
   tiles.innerHTML = `
-    <div class="tile"><div class="label">Disco usado</div><div class="value">${disk.usedPercent}%</div><div class="sub">${fmtBytes(disk.availBytes)} livres de ${fmtBytes(disk.totalBytes)}</div></div>
-    <div class="tile"><div class="label">RAM total</div><div class="value">${fmtBytes(ram.totalBytes)}</div><div class="sub">${ram.cpuCount} vCPUs</div></div>
+    ${meterTile('Disco', disk.usedPercent, `${fmtBytes(disk.availBytes)} livres de ${fmtBytes(disk.totalBytes)}`)}
+    ${meterTile('Memória', ram.usedPercent, `${fmtBytes(ram.usedBytes)} de ${fmtBytes(ram.totalBytes)} (${ram.cpuCount} vCPUs)`)}
+    ${meterTile('CPU', cpu.usedPercent, 'uso médio no último instante')}
     <div class="tile"><div class="label">Imagens Docker</div><div class="value">${fmtBytes(docker.images.sizeBytes)}</div><div class="sub">${fmtBytes(docker.images.reclaimableBytes)} reaproveitável (${docker.images.count} imagens)</div></div>
     <div class="tile"><div class="label">Containers</div><div class="value">${docker.containers.count}</div><div class="sub">${fmtBytes(docker.containers.sizeBytes)} em disco</div></div>
   `;
-  tiles.dataset.diskStatus = diskStatus;
 }
 
 function renderContainers(list) {
@@ -186,6 +199,64 @@ async function refreshSummary() {
   renderTiles(await api('/api/summary'));
 }
 
+function renderFailedLogins(list) {
+  const tbody = document.querySelector('#failed-logins-table tbody');
+  tbody.innerHTML = list.map((entry) => (
+    `<tr>
+      <td>${entry.ip}</td>
+      <td class="num">${entry.count}</td>
+      <td><div class="row-actions"><button data-block="${entry.ip}" class="danger">Bloquear</button></div></td>
+    </tr>`
+  )).join('');
+}
+
+function renderBlockedIps(list) {
+  const tbody = document.querySelector('#blocked-ips-table tbody');
+  tbody.innerHTML = list.length
+    ? list.map((ip) => (
+      `<tr><td>${ip}</td><td><div class="row-actions"><button data-unblock="${ip}">Liberar</button></div></td></tr>`
+    )).join('')
+    : '<tr><td colspan="2" class="muted">Nenhum IP bloqueado no momento</td></tr>';
+}
+
+async function refreshSecurity() {
+  const [failedLogins, blockedIps] = await Promise.all([
+    api('/api/security/failed-logins'),
+    api('/api/security/blocked-ips'),
+  ]);
+  renderFailedLogins(failedLogins);
+  renderBlockedIps(blockedIps);
+}
+
+document.querySelector('#failed-logins-table tbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-block]');
+  if (!btn) return;
+  const ip = btn.dataset.block;
+  if (!confirm(`Bloquear o IP ${ip} na porta 22 (SSH)?`)) return;
+  btn.disabled = true;
+  try {
+    await api(`/api/security/block/${ip}`, { method: 'POST' });
+    await refreshSecurity();
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+  }
+});
+
+document.querySelector('#blocked-ips-table tbody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-unblock]');
+  if (!btn) return;
+  const ip = btn.dataset.unblock;
+  btn.disabled = true;
+  try {
+    await api(`/api/security/unblock/${ip}`, { method: 'POST' });
+    await refreshSecurity();
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+  }
+});
+
 let ws;
 function connectWs(token) {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -202,9 +273,11 @@ function boot(wsToken) {
   refreshContainers();
   refreshPostgres();
   refreshLogBreakdown();
+  refreshSecurity();
   connectWs(wsToken);
   setInterval(refreshSummary, 15000);
   setInterval(refreshPostgres, 30000);
+  setInterval(refreshSecurity, 30000);
 }
 
 showLogin();

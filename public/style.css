@@ -122,8 +122,38 @@ header h1 { font-size: 1.2rem; margin: 0; }
 .tile .value { font-size: 1.6rem; font-weight: 600; font-variant-numeric: proportional-nums; margin-top: 4px; }
 .tile .sub { color: var(--muted); font-size: 0.78rem; margin-top: 2px; }
 
+.meter-tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.meter-tile .meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.meter-tile .label { color: var(--text-secondary); font-size: 0.8rem; }
+.meter-tile .value { font-size: 1.3rem; font-weight: 600; font-variant-numeric: proportional-nums; }
+.meter-track {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--meter-color) 18%, transparent);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--meter-color);
+  transition: width 0.4s ease;
+}
+.meter-tile .sub { color: var(--muted); font-size: 0.78rem; margin-top: 6px; }
+
 .panel { padding: 8px 24px 24px; }
 .panel h2 { font-size: 1rem; color: var(--text-secondary); margin: 12px 0; }
+.panel h3.subheading { font-size: 0.85rem; color: var(--muted); margin: 16px 0 8px; }
+.panel table + table { margin-top: 8px; }
 
 table { width: 100%; border-collapse: collapse; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--gridline); font-size: 0.88rem; }
