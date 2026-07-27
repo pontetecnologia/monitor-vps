@@ -315,6 +315,9 @@ app.use((err, req, res, next) => {
 
 const server = app.listen(PORT, () => console.log(`vps-monitor ouvindo na porta ${PORT}`));
 metrics.start();
+hostActions.reapplyPersistedBlocks()
+  .then((list) => { if (list.length) console.log(`Reaplicados ${list.length} bloqueio(s) de IP apos start.`); })
+  .catch((e) => console.error('Falha ao reaplicar bloqueios persistidos:', e.message));
 
 const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {

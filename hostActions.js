@@ -1,10 +1,31 @@
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { Writable } = require('stream');
+const fs = require('fs');
+const path = require('path');
 const execFileAsync = promisify(execFile);
 const { docker } = require('./docker');
 
 const HOSTFS = '/hostfs';
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const BLOCKED_IPS_FILE = path.join(DATA_DIR, 'blocked-ips.json');
+
+// Regras do iptables vivem so na memoria do kernel - somem em qualquer reboot.
+// Mantemos nossa propria lista em disco pra poder reaplicar os bloqueios
+// assim que o painel sobe de novo (ver reapplyPersistedBlocks).
+function loadPersistedBlockedIps() {
+  try {
+    const list = JSON.parse(fs.readFileSync(BLOCKED_IPS_FILE, 'utf8'));
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePersistedBlockedIps(list) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(BLOCKED_IPS_FILE, JSON.stringify(list));
+}
 
 async function diskSummary() {
   const { stdout } = await execFileAsync('df', ['-B1', HOSTFS]);
@@ -229,11 +250,17 @@ async function blockIp(ip) {
   if (check.statusCode !== 0) {
     await runHostContainer(['chroot', '/host', 'iptables', '-A', BLOCK_CHAIN, '-s', ip, '-p', 'tcp', '--dport', '22', '-j', 'DROP'], FIREWALL_HOST_CONFIG);
   }
+  const list = loadPersistedBlockedIps();
+  if (!list.includes(ip)) {
+    list.push(ip);
+    savePersistedBlockedIps(list);
+  }
 }
 
 async function unblockIp(ip) {
   if (!isValidIpv4(ip)) throw new Error('IP invalido');
   await runHostContainer(['chroot', '/host', 'iptables', '-D', BLOCK_CHAIN, '-s', ip, '-p', 'tcp', '--dport', '22', '-j', 'DROP'], FIREWALL_HOST_CONFIG);
+  savePersistedBlockedIps(loadPersistedBlockedIps().filter((x) => x !== ip));
 }
 
 async function listBlockedIps() {
@@ -242,6 +269,32 @@ async function listBlockedIps() {
     `iptables -L ${BLOCK_CHAIN} -n 2>/dev/null | awk 'NR>2 {print $4}'`,
   ], FIREWALL_HOST_CONFIG);
   return output.trim().split('\n').filter(Boolean);
+}
+
+// Roda no boot do painel. Cobre dois casos com a mesma logica:
+// 1) Depois de um reboot da VPS: iptables fica vazio, e reaplicamos aqui os
+//    bloqueios que estavam persistidos em /data.
+// 2) No primeiro boot com esse recurso (ou apos um deploy que ainda nao tinha
+//    persistencia): o iptables pode ja ter bloqueios "ao vivo" que nunca foram
+//    salvos em /data - a uniao dos dois garante que nenhum se perde daqui pra frente.
+async function reapplyPersistedBlocks() {
+  const persisted = loadPersistedBlockedIps();
+  let live = [];
+  try {
+    live = await listBlockedIps();
+  } catch { /* iptables pode estar vazio/sem a chain ainda - ok */ }
+
+  const union = [...new Set([...persisted, ...live])];
+  savePersistedBlockedIps(union);
+
+  for (const ip of union) {
+    try {
+      await blockIp(ip);
+    } catch (e) {
+      console.error(`Falha ao reaplicar bloqueio de ${ip}:`, e.message);
+    }
+  }
+  return union;
 }
 
 module.exports = {
@@ -257,6 +310,7 @@ module.exports = {
   blockIp,
   unblockIp,
   listBlockedIps,
+  reapplyPersistedBlocks,
   isValidIpv4,
   changeRootPassword,
   rebootVps,
