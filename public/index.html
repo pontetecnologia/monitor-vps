@@ -18,15 +18,28 @@
   </form>
 </div>
 
-<div id="app-screen" class="screen" hidden>
-  <header>
-    <h1>VPS Monitor</h1>
-    <button id="logout-btn" class="ghost">Sair</button>
-  </header>
+<div id="app-screen" class="screen app-shell" hidden>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-dot"></span>
+      VPS Monitor
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#tiles">Visão geral</a>
+      <a href="#history">Histórico</a>
+      <a href="#containers">Containers</a>
+      <a href="#postgres">Postgres</a>
+      <a href="#cleanup">Limpeza</a>
+      <a href="#security">Segurança</a>
+      <a href="#account">Conta</a>
+    </nav>
+    <button id="logout-btn" class="ghost sidebar-logout">Sair</button>
+  </aside>
 
+  <main class="main-content">
   <section class="tiles" id="tiles"></section>
 
-  <section class="panel">
+  <section class="panel" id="history">
     <div class="panel-header">
       <h2>Histórico de uso</h2>
       <div class="range-picker" id="range-picker">
@@ -43,7 +56,7 @@
     <div class="chart-legend" id="chart-legend"></div>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="containers">
     <h2>Containers</h2>
     <table id="containers-table">
       <thead><tr><th>Nome</th><th>Projeto</th><th>Status</th><th>CPU</th><th>Mem</th><th>Ações</th></tr></thead>
@@ -51,7 +64,7 @@
     </table>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="postgres">
     <h2>Bancos Postgres</h2>
     <table id="postgres-table">
       <thead><tr><th>Container</th><th>Banco</th><th>Tamanho</th><th>Ações</th></tr></thead>
@@ -59,7 +72,7 @@
     </table>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="cleanup">
     <h2>Limpeza de espaço</h2>
     <div id="log-breakdown" class="log-breakdown"></div>
     <div class="cleanup-actions">
@@ -72,7 +85,7 @@
     <p id="cleanup-result" class="muted"></p>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="security">
     <h2>Segurança — tentativas de conexão (SSH)</h2>
     <p class="muted">Bloqueios afetam só a porta 22 (SSH) — o acesso a este painel (via Cloudflare/Traefik, portas 80/443) nunca é afetado, então dá pra sempre voltar aqui e liberar de novo.</p>
     <table id="failed-logins-table">
@@ -86,7 +99,7 @@
     </table>
   </section>
 
-  <section class="panel">
+  <section class="panel" id="account">
     <h2>Conta</h2>
     <div class="account-grid">
       <div class="account-card">
@@ -160,6 +173,7 @@
       </div>
     </div>
   </section>
+  </main>
 </div>
 
 <div id="modal-backdrop" class="modal-backdrop" hidden>
